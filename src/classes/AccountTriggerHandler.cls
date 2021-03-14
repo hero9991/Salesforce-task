@@ -4,15 +4,19 @@
 
 public with sharing class AccountTriggerHandler {
     @Future
-    public static void billingAddressChanged(List<Id> lstOldAccountIds, List<Id> lstAccountIds) {
-        List<Account> lstOldAccount = [SELECT Id, BillingAddress FROM Account WHERE Id IN :lstOldAccountIds];
-        List<Account> lstAccount = [SELECT Id, BillingAddress FROM Account WHERE Id IN :lstAccountIds];
+    public static void billingAddressChanged(String strOldAccountIds, String strAccountIds) {
+        Map<Id, Account> oldMap = (Map<Id, Account>) JSON.deserialize(strOldAccountIds, Map<Id, Account>.class);
+        Map<Id, Account> newMap = (Map<Id, Account>) JSON.deserialize(strAccountIds, Map<Id, Account>.class);
         Set<Id> IdsOfChangedAccount = new Set<Id>();
-        for (Account oldAcc : lstOldAccount) {
-            for (Account acc : lstAccount) {
-                if (oldAcc.Id == acc.Id && oldAcc.BillingAddress != acc.BillingAddress) {
-                    IdsOfChangedAccount.add(acc.Id);
-                }
+        for (Account acc : newMap.values()) {
+            Account oldAcc = oldMap.get(acc.Id);
+            if (oldAcc.Id == acc.Id && (oldAcc.BillingCity != acc.BillingCity
+                    || oldAcc.BillingCountry != acc.BillingCountry
+                    || oldAcc.BillingState != acc.BillingState
+                    || oldAcc.BillingStreet != acc.BillingStreet
+                    || oldAcc.BillingPostalCode != acc.BillingPostalCode)) {
+                System.debug('done');
+                IdsOfChangedAccount.add(acc.Id);
             }
         }
         List<Contact> lstRelatedContacts = [SELECT Id FROM Contact
@@ -21,9 +25,20 @@ public with sharing class AccountTriggerHandler {
             c.Is_Synced__c = false;
             c.Processed_By_Future__c = true;
         }
-        update lstRelatedContacts;
+        if (!lstRelatedContacts.isEmpty()) {
+            update lstRelatedContacts;
+        }
     }
-    public static void queueableBillingAddressChanged (List<Account> lstOldAccount, List<Account> lstAccount){
-        System.enqueueJob(new AccountQueueableHelper(lstOldAccount, lstAccount));
+    public static void queueableBillingAddressChanged (Map<Id, Account> oldMapAccount, Map<Id, Account> newMapAccount){
+        Id JobId = System.enqueueJob(new AccountQueueableHelper(oldMapAccount, newMapAccount));
+    }
+    public static void batchTask (Account acc) {
+        acc.Updated_By_Task__c = true;
+        List<User> accOwnerName = [SELECT Name FROM User WHERE Id = :acc.OwnerId];
+        Database.executeBatch(new TasksBatchHandler(acc, accOwnerName[0].Name), 200);
+    }
+    public static void batchContact (Account acc) {
+        acc.Updated_By_Contact__c = true;
+        Database.executeBatch(new ContactBatchHandler(acc), 200);
     }
 }

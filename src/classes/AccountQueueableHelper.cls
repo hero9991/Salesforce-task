@@ -1,21 +1,25 @@
-/**
+/*
  * Created by a000 on 10.03.2021.
  */
 
 public with sharing class AccountQueueableHelper implements Queueable{
-    List<Account> lstOldAccount;
-    List<Account> lstAccount;
-    AccountQueueableHelper(List<Account> lstOldAccount, List<Account> lstAccount) {
-        this.lstOldAccount = lstOldAccount;
-        this.lstAccount = lstAccount;
+    Map<Id, Account> oldMapAccount;
+    Map<Id, Account> newMapAccount;
+    public AccountQueueableHelper(Map<Id, Account> oldMapAccount, Map<Id, Account> newMapAccount) {
+        this.oldMapAccount = oldMapAccount;
+        this.newMapAccount = newMapAccount;
     }
     public void execute(System.QueueableContext context) {
         Set<Id> IdsOfChangedAccount = new Set<Id>();
-        for (Account oldAcc : lstOldAccount) {
-            for (Account acc : lstAccount) {
-                if (oldAcc.Id == acc.Id && oldAcc.BillingAddress != acc.BillingAddress) {
-                    IdsOfChangedAccount.add(acc.Id);
-                }
+        for (Account acc : newMapAccount.values()) {
+            Account oldAcc = oldMapAccount.get(acc.Id);
+            if (oldAcc.Id == acc.Id && (oldAcc.BillingCity != acc.BillingCity
+                    || oldAcc.BillingCountry != acc.BillingCountry
+                    || oldAcc.BillingState != acc.BillingState
+                    || oldAcc.BillingStreet != acc.BillingStreet
+                    || oldAcc.BillingPostalCode != acc.BillingPostalCode)) {
+                System.debug('done');
+                IdsOfChangedAccount.add(acc.Id);
             }
         }
         List<Contact> lstRelatedContacts = [SELECT Id FROM Contact
@@ -24,6 +28,8 @@ public with sharing class AccountQueueableHelper implements Queueable{
             c.Is_Synced__c = false;
             c.Processed_By_Queue__c = true;
         }
-        update lstRelatedContacts;
+        if (!lstRelatedContacts.isEmpty()){
+            update lstRelatedContacts;
+        }
     }
 }
