@@ -7,7 +7,7 @@ public with sharing class CreateTaskForAccount {
         List<Task> lstTask = new List<Task>();
         for(Account acc : lstAccounts) {
             Task newTask = new Task(Subject = 'Negotiations with' + acc.Name,
-                    WhatId = acc.Id);
+                    WhatId = acc.Id, Is_Synced__c = false);
             lstTask.add(newTask);
         }
         insert lstTask;

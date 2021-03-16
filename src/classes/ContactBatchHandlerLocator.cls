@@ -2,9 +2,9 @@
  * Created by a000 on 15.03.2021.
  */
 
-public with sharing class ContactBatchHandler  implements Database.Batchable<SObject>{
-    public Iterable<SObject> start(Database.BatchableContext BC){
-        return [SELECT Id, AccountId FROM Contact WHERE Is_Synced__c = FALSE];
+public with sharing class ContactBatchHandlerLocator implements Database.Batchable<SObject>{
+    public Database.QueryLocator start(Database.BatchableContext BC){
+        return Database.getQueryLocator('SELECT AccountId FROM Contact WHERE Is_Synced__c = false');
     }
     public void execute(Database.BatchableContext BC, List<Contact> lstContact){
         Set<Id> setAccountIds = new Set<Id>();

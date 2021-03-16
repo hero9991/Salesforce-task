@@ -13,12 +13,11 @@ public with sharing class AccountQueueableHelper implements Queueable{
         Set<Id> IdsOfChangedAccount = new Set<Id>();
         for (Account acc : newMapAccount.values()) {
             Account oldAcc = oldMapAccount.get(acc.Id);
-            if (oldAcc.Id == acc.Id && (oldAcc.BillingCity != acc.BillingCity
+            if (oldAcc.BillingCity != acc.BillingCity
                     || oldAcc.BillingCountry != acc.BillingCountry
                     || oldAcc.BillingState != acc.BillingState
                     || oldAcc.BillingStreet != acc.BillingStreet
-                    || oldAcc.BillingPostalCode != acc.BillingPostalCode)) {
-                System.debug('done');
+                    || oldAcc.BillingPostalCode != acc.BillingPostalCode) {
                 IdsOfChangedAccount.add(acc.Id);
             }
         }

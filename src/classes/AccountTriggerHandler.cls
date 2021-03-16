@@ -4,18 +4,28 @@
 
 public with sharing class AccountTriggerHandler {
     @Future
+    public static void createTask(Set<Id> setIds) {
+        List<Account> lstAccounts = [SELECT Name, Id FROM Account WHERE Id IN :setIds];
+        List<Task> lstTask = new List<Task>();
+        for(Account acc : lstAccounts) {
+            Task newTask = new Task(Subject = 'Negotiations with' + acc.Name,
+                    WhatId = acc.Id, Is_Synced__c = false);
+            lstTask.add(newTask);
+        }
+        insert lstTask;
+    }
+    @Future
     public static void billingAddressChanged(String strOldAccountIds, String strAccountIds) {
         Map<Id, Account> oldMap = (Map<Id, Account>) JSON.deserialize(strOldAccountIds, Map<Id, Account>.class);
         Map<Id, Account> newMap = (Map<Id, Account>) JSON.deserialize(strAccountIds, Map<Id, Account>.class);
         Set<Id> IdsOfChangedAccount = new Set<Id>();
         for (Account acc : newMap.values()) {
             Account oldAcc = oldMap.get(acc.Id);
-            if (oldAcc.Id == acc.Id && (oldAcc.BillingCity != acc.BillingCity
+            if (oldAcc.BillingCity != acc.BillingCity
                     || oldAcc.BillingCountry != acc.BillingCountry
                     || oldAcc.BillingState != acc.BillingState
                     || oldAcc.BillingStreet != acc.BillingStreet
-                    || oldAcc.BillingPostalCode != acc.BillingPostalCode)) {
-                System.debug('done');
+                    || oldAcc.BillingPostalCode != acc.BillingPostalCode) {
                 IdsOfChangedAccount.add(acc.Id);
             }
         }
@@ -32,13 +42,10 @@ public with sharing class AccountTriggerHandler {
     public static void queueableBillingAddressChanged (Map<Id, Account> oldMapAccount, Map<Id, Account> newMapAccount){
         Id JobId = System.enqueueJob(new AccountQueueableHelper(oldMapAccount, newMapAccount));
     }
-    public static void batchTask (Account acc) {
-        acc.Updated_By_Task__c = true;
-        List<User> accOwnerName = [SELECT Name FROM User WHERE Id = :acc.OwnerId];
-        Database.executeBatch(new TasksBatchHandler(acc, accOwnerName[0].Name), 200);
+    public static void batchTask () {
+        Database.executeBatch(new TasksBatchHandler(), 200);
     }
-    public static void batchContact (Account acc) {
-        acc.Updated_By_Contact__c = true;
-        Database.executeBatch(new ContactBatchHandler(acc), 200);
+    public static void batchContact () {
+        Database.executeBatch(new ContactBatchHandler(), 200);
     }
 }
